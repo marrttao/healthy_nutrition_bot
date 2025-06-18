@@ -1,3 +1,4 @@
+// User.cs
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
@@ -6,18 +7,20 @@ namespace HealthyNutritionBot.domain.entities;
 [Table("users")]
 public class User : BaseModel
 {
-    [PrimaryKey("telegram_id", false)]
-    public short TelegramId { get; set; }
     
+    [Column("telegram_id")]
+    public long TelegramId { get; set; }
+    [PrimaryKey("id", false)]
+    public short id { get; set; }
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } // заменить TimestampAttribute на DateTime
+    public DateTime CreatedAt { get; set; }
 
     [Column("name")]
-    public string name { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     [Column("lastname")]
-    public string lastname { get; set; } = string.Empty;
+    public string Lastname { get; set; } = string.Empty;
 
     [Column("isActive")]
-    public bool isActive { get; set; } = true;
-}   
+    public bool IsActive { get; set; } = true;
+}

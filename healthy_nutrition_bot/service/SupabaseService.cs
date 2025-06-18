@@ -10,7 +10,7 @@ public class SupabaseService
     private readonly string _url;
     private readonly string _key;
     private readonly SupabaseOptions _options;
-    private readonly Client _supabase;
+    public Client _supabase;
 
     public SupabaseService()
     {
