@@ -49,13 +49,63 @@ public class HandlerCommands
 
         await _botClient.SendTextMessageAsync(
             chatId: chatId,
-            text: "Привет Я бот по здоровому питанию.",
+            text: "Hi there! I'm your personal nutrition bot. I can help you with healthy eating habits and recipes. " +
+                  "For start lets fill up your stats",
             parseMode: Telegram.Bot.Types.Enums.ParseMode.MarkdownV2,
             replyMarkup: Buttons.GetMainMenu(),
             cancellationToken: cancellationToken
         );
     }
 
+    public async Task HandlerFillStats(long chatId, Message message, CancellationToken cancellationToken)
+    {
+        // Send message asking for height
+        await _botClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: "Enter your height in centimeters (cm):",
+            cancellationToken: cancellationToken
+        );
+
+        // Check if message contains valid height
+        while (true)
+        {
+            if (message.Text != null && int.TryParse(message.Text, out int height))
+            {
+                int heightt = height;
+                // TODO: Save height to database
+                Console.WriteLine($"User height: {height} cm");
+                break;
+            }   
+            else
+
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "You entered an invalid height. Please enter valid height.",
+                    cancellationToken: cancellationToken
+                );
+            }
+        }
+
+        await _botClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: "Enter your weight in killograms (kg):",
+            cancellationToken: cancellationToken
+            );
+        // Check if message contains valid weight
+        
+        while (true)
+        {
+            if (message.Text != null && int.TryParse(message.Text, out int weight))
+            {
+                int weightt = weight;
+                Console.WriteLine($"User height: {weight} kg");
+                break;
+            }
+            
+
+
+        }
     public async Task HandleUnknownCommand(long chatId, CancellationToken cancellationToken)
     {
         await _botClient.SendTextMessageAsync(

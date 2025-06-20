@@ -8,12 +8,27 @@ public static class Buttons
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "Add Food", "Remove Food" },
-            new KeyboardButton[] { "Stats", "Points" }
+            new KeyboardButton[] { "Eat",  },
+            new KeyboardButton[] { "Stats", "ranking" },
+            new KeyboardButton[] { "Settings", "Help" }
         })
         {
             ResizeKeyboard = true,
             OneTimeKeyboard = false
         };
     }
+
+    public static ReplyKeyboardMarkup Settings()
+    {
+        return new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { "Change own stats", "Change Language" },
+            new KeyboardButton[] { "Back" }
+        })
+        {
+            ResizeKeyboard = true,
+            OneTimeKeyboard = false
+        };
+    }
+    
 }

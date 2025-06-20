@@ -28,6 +28,6 @@ public class UserRepository : IUserRepository
 
     public async Task AddUserAsync(User user)
     {
-        await _insertService.InsertUserAsync(user);
+        await _insertService.InsertAsync(user);
     }
 }

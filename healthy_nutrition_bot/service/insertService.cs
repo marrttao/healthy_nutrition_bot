@@ -14,7 +14,7 @@ public class InsertService
     }
 
     
-    public async Task<T> InsertUserAsync<T>(T insert) where T : Supabase.Postgrest.Models.BaseModel, new()
+    public async Task<T> InsertAsync<T>(T insert) where T : Supabase.Postgrest.Models.BaseModel, new()
     {
         // Insert the entity into the database
          var response = await _supabase.From<T>().Insert(insert);

@@ -31,7 +31,7 @@ class Program
             IsActive = true
         };
         // Insert a new user
-        await insertService.InsertUserAsync(user);
+        await insertService.InsertAsync(user);
         var retrievedUsers = await fetchService.GetDataByConditionAsync<HealthyNutritionBot.domain.entities.User>(
             "users",
             u => u.TelegramId == user.TelegramId
