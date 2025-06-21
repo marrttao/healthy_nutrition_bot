@@ -1,117 +1,224 @@
-// handlerCommands.cs
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using healthy_nutrition_bot.UI;
-using HealthyNutritionBot.domain.entities;
+using UserEntity = HealthyNutritionBot.domain.entities.User;
 using HealthyNutritionBot.domain.interfaces;
+using HealthyNutritionBot.service;
+using HealthyNutritionBot.service.TokenReader;
 
-namespace HealthyNutritionBot.service.handlers;
-
-public class HandlerCommands
+namespace HealthyNutritionBot.service.handlers
 {
-    private readonly ITelegramBotClient _botClient;
-    private readonly InsertService _insertService;
-    private readonly IUserRepository _userRepository;
-
-    public HandlerCommands(ITelegramBotClient botClient, InsertService insertService, IUserRepository userRepository)
+    public class HandlerCommands
     {
-        _botClient = botClient;
-        _insertService = insertService;
-        _userRepository = userRepository;
-    }
+        private readonly ITelegramBotClient _botClient;
+        private readonly IUserRepository _userRepository;
+        private readonly string _botToken;
+        private readonly ClarifaiService _clarifaiService;
 
-    public async Task HandleStartCommand(long chatId, Message message, CancellationToken cancellationToken)
-    {
-        // Create and insert user
-        var user = new HealthyNutritionBot.domain.entities.User
+        public HandlerCommands(
+            ITelegramBotClient botClient,
+            IUserRepository userRepository,
+            string botToken,
+            ClarifaiService clarifaiService)
         {
-            TelegramId = chatId,
-            Name = message?.From?.FirstName ?? "User",
-            Lastname = message?.From?.LastName ?? "",
-            IsActive = true
-        };
-        // if not exists, insert user
-        var existingUser = await _userRepository.GetUserById(chatId);
-        if (existingUser != null)
-        {
-            Console.WriteLine($"Пользователь {existingUser.Name.ToString()} {existingUser.Lastname.ToString()} с ID {existingUser.TelegramId.ToString()} уже существует.");
-            return;
-        }
-        else
-        {
-            await _userRepository.AddUserAsync(user);
+            _botClient      = botClient;
+            _userRepository = userRepository;
+            _botToken       = botToken;
+            _clarifaiService = clarifaiService;
         }
 
-        Console.WriteLine($"Пользователь {user.Name.ToString()} {user.Lastname.ToString()} с ID {user.TelegramId.ToString()} добавлен в базу данных.");
-
-        await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Hi there! I'm your personal nutrition bot. I can help you with healthy eating habits and recipes. " +
-                  "For start lets fill up your stats",
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.MarkdownV2,
-            replyMarkup: Buttons.GetMainMenu(),
-            cancellationToken: cancellationToken
-        );
-    }
-
-    public async Task HandlerFillStats(long chatId, Message message, CancellationToken cancellationToken)
-    {
-        // Send message asking for height
-        await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Enter your height in centimeters (cm):",
-            cancellationToken: cancellationToken
-        );
-
-        // Check if message contains valid height
-        while (true)
+        private enum FillStatsStep
         {
-            if (message.Text != null && int.TryParse(message.Text, out int height))
+            None,
+            WaitingHeight,
+            WaitingWeight,
+            Done
+        }
+
+        private readonly Dictionary<long, FillStatsStep> _userSteps = new();
+        private readonly Dictionary<long, (int? Height, int? Weight)> _userStats = new();
+        private readonly Dictionary<long, bool> _waitingForFoodPhoto = new();
+
+        public async Task HandleStartCommand(long chatId, Message message, CancellationToken cancellationToken)
+        {
+            var user = new UserEntity
             {
-                int heightt = height;
-                // TODO: Save height to database
-                Console.WriteLine($"User height: {height} cm");
-                break;
-            }   
-            else
+                TelegramId = chatId,
+                Name       = message?.From?.FirstName ?? "User",
+                Lastname   = message?.From?.LastName  ?? "",
+                IsActive   = true
+            };
 
+            var existingUser = await _userRepository.GetUserById(chatId);
+            if (existingUser != null)
+            {
+                Console.WriteLine($"User {existingUser.Name} already exists.");
+            }
+            else
+            {
+                await _userRepository.AddUserAsync(user);
+                Console.WriteLine($"Added user {user.Name}.");
+            }
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Hi there! I'm your personal nutrition bot. Let's start by filling up your stats.",
+                cancellationToken: cancellationToken);
+
+            _userSteps[chatId] = FillStatsStep.WaitingHeight;
+            _userStats[chatId] = (null, null);
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Enter your height in centimeters (cm):",
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task HandleChangeOwnStatsCommand(long chatId, CancellationToken cancellationToken)
+        {
+            if (!_userSteps.ContainsKey(chatId) || _userSteps[chatId] == FillStatsStep.None)
+            {
+                _userSteps[chatId] = FillStatsStep.WaitingHeight;
+                _userStats[chatId] = (null, null);
+
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "Let's update your stats. Please enter your height in centimeters (cm):",
+                    cancellationToken: cancellationToken);
+            }
+            else
             {
                 await _botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "You entered an invalid height. Please enter valid height.",
-                    cancellationToken: cancellationToken
-                );
+                    chatId,
+                    "You are already in the process of updating your stats. Please continue.",
+                    cancellationToken: cancellationToken);
             }
         }
 
-        await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Enter your weight in killograms (kg):",
-            cancellationToken: cancellationToken
-            );
-        // Check if message contains valid weight
-        
-        while (true)
+        public async Task HandlerFillStats(long chatId, string messageText, CancellationToken cancellationToken)
         {
-            if (message.Text != null && int.TryParse(message.Text, out int weight))
+            var step = _userSteps[chatId];
+
+            if (step == FillStatsStep.WaitingHeight)
             {
-                int weightt = weight;
-                Console.WriteLine($"User height: {weight} kg");
-                break;
+                if (int.TryParse(messageText, out int height))
+                {
+                    _userStats[chatId] = (height, _userStats[chatId].Weight);
+                    _userSteps[chatId] = FillStatsStep.WaitingWeight;
+
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        "Enter your weight in kilograms (kg):",
+                        cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        "Please enter a valid number for height.",
+                        cancellationToken: cancellationToken);
+                }
+                return;
             }
-            
 
+            if (step == FillStatsStep.WaitingWeight)
+            {
+                if (int.TryParse(messageText, out int weight))
+                {
+                    _userStats[chatId] = (_userStats[chatId].Height, weight);
+                    _userSteps[chatId] = FillStatsStep.Done;
 
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        $"Thanks! Your stats are saved:\nHeight: {_userStats[chatId].Height} cm\nWeight: {_userStats[chatId].Weight} kg",
+                        cancellationToken: cancellationToken);
+
+                    _userSteps[chatId] = FillStatsStep.None;
+                    _userStats.Remove(chatId);
+                }
+                else
+                {
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        "Please enter a valid number for weight.",
+                        cancellationToken: cancellationToken);
+                }
+            }
         }
-    public async Task HandleUnknownCommand(long chatId, CancellationToken cancellationToken)
-    {
-        await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Пока я понимаю только /start. В будущем научусь большему :)",
-            cancellationToken: cancellationToken
-        );
+
+        public async Task HandleSettingsCommand(long chatId, CancellationToken cancellationToken)
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Settings menu",
+                replyMarkup: Buttons.Settings(),
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task HandleBackCommand(long chatId, CancellationToken cancellationToken)
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "You are back to the main menu.",
+                replyMarkup: Buttons.GetMainMenu(),
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task HandleEatCommand(long chatId, CancellationToken cancellationToken)
+        {
+            _waitingForFoodPhoto[chatId] = true;
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Send photo of your food.",
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task HandlePhotoAsync(Message message, CancellationToken cancellationToken)
+        {
+            long chatId = message.Chat.Id;
+            if (_waitingForFoodPhoto.TryGetValue(chatId, out bool waiting) && waiting)
+            {
+                _waitingForFoodPhoto[chatId] = false;
+
+                var photo    = message.Photo[^1];
+                var file     = await _botClient.GetFileAsync(photo.FileId);
+                var filePath = file.FilePath;
+                var fileUrl  = $"https://api.telegram.org/file/bot{_botToken}/{filePath}";
+
+                var result = await _clarifaiService.RecognizeFoodAsync(fileUrl);
+                await _botClient.SendTextMessageAsync(chatId, $"🍽 I see: {result}", cancellationToken: cancellationToken);
+            }
+        }
+
+        public async Task HandleUserMessage(long chatId, string messageText, CancellationToken cancellationToken)
+        {
+            if (!_userSteps.ContainsKey(chatId) || _userSteps[chatId] == FillStatsStep.None)
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "Please start with /start command.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            await HandlerFillStats(chatId, messageText, cancellationToken);
+        }
+
+        public async Task HandleUnknownCommand(long chatId, CancellationToken cancellationToken)
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "I only understand /start for now. More to come!",
+                cancellationToken: cancellationToken);
+        }
     }
 }
+
