@@ -8,8 +8,8 @@ public static class Buttons
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "Eat",  },
-            new KeyboardButton[] { "Stats", "ranking" },
+            new KeyboardButton[] { "Eat", "Daily Goal"  },
+            new KeyboardButton[] { "Stats", "Ranking" },
             new KeyboardButton[] { "Settings", "Help" }
         })
         {

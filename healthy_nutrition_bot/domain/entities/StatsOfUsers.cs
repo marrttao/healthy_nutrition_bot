@@ -18,10 +18,10 @@ public class StatsOfUsers : BaseModel
 
     [Column("height")]
     public float Height { get; set; }
-
-    [Column("sex")]
-    public string Sex { get; set; } = string.Empty;
-
+    
     [Column("points")]
     public int Points { get; set; }
+    
+    [Column("shoppoints")]
+    public int ShopPoints { get; set; }
 }

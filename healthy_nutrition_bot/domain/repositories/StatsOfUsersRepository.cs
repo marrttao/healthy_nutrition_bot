@@ -11,6 +11,7 @@ public class StatsOfUsersRepository : IStatsOfUsersRepository
     private readonly Supabase.Client _supabase;
     private readonly FetchService _fetchService;
     private readonly InsertService _insertService;
+    private readonly UpdateService _updateService;
     
     public StatsOfUsersRepository(Supabase.Client supabase)
     {
@@ -30,5 +31,10 @@ public class StatsOfUsersRepository : IStatsOfUsersRepository
         await _insertService.InsertAsync(stats);
     }
 
-    
+    public async Task UpdateStatsAsync(StatsOfUsers stats)
+    {
+        await _updateService.UpdateAsync(stats);
+    }
+
+
 }

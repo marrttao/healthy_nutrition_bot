@@ -7,5 +7,6 @@ public interface IStatsOfUsersRepository
 {
     Task<StatsOfUsers> GetStatsByTelegramIdAsync(long telegramId);
     Task AddStatsAsync(StatsOfUsers stats);
+    Task UpdateStatsAsync(StatsOfUsers stats);
     
 }

@@ -10,6 +10,8 @@ public class TokenReader
         public string SupabaseUrl { get; set; } = string.Empty;
         public string SupabaseKey { get; set; } = string.Empty;
         public string ClarifaiToken { get; set; } = string.Empty;
+        
+        public string UsdaApiKey { get; set; } = string.Empty;
     }
 
     private class TokensFile
@@ -34,5 +36,7 @@ public class TokenReader
     public string GetSupabaseUrl() => _settings.SupabaseUrl;
     public string GetSupabaseKey() => _settings.SupabaseKey;
     public string GetClarifaiToken() => _settings.ClarifaiToken;
+    
+    public string GetUsdaApiKey() => _settings.UsdaApiKey;
 }
 

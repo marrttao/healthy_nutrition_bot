@@ -5,6 +5,7 @@ using Telegram.Bot.Exceptions;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using healthy_nutrition_bot.Core.service;
 using HealthyNutritionBot.service;
 using HealthyNutritionBot.domain.interfaces;
 
@@ -19,11 +20,13 @@ public class MessagesHandler
         ITelegramBotClient botClient,
         InsertService insertService,
         IUserRepository userRepository,
+        IStatsOfUsersRepository statsOfUsersRepository,
         ClarifaiService clarifaiService,
+        UsdaService usdaService,
         string botToken)
     {
         _botClient = botClient;
-        _commandHandler = new HandlerCommands(botClient, userRepository,botToken, clarifaiService);
+        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, botToken, clarifaiService, usdaService);
     }
 
     public async Task HandleUpdateAsync(
