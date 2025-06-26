@@ -24,4 +24,13 @@ public class StatsOfUsers : BaseModel
     
     [Column("shoppoints")]
     public int ShopPoints { get; set; }
+    
+    [Column("gender")]
+    public string Gender { get; set; }
+    
+    [Column("goal")]
+    public string Goal { get; set; }
+    
+    [Column("activity")]
+    public string Activity { get; set; }
 }

@@ -46,6 +46,7 @@ class Program
 
         UserRepository userRepository = new UserRepository(supabaseService._supabase);
         StatsOfUsersRepository statsOfUsersRepository = new StatsOfUsersRepository(supabaseService._supabase);
+        DailyNormRepository dailyNormRepository = new DailyNormRepository(supabaseService._supabase);
 
         var user = new User
         {
@@ -78,6 +79,7 @@ class Program
             insertService,
             userRepository,
             statsOfUsersRepository,
+            dailyNormRepository,
             clarifaiService,
             usdaService,
             telegramToken

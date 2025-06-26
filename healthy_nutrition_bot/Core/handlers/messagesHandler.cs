@@ -21,12 +21,13 @@ public class MessagesHandler
         InsertService insertService,
         IUserRepository userRepository,
         IStatsOfUsersRepository statsOfUsersRepository,
+        IDailyNormRepository dailyNormRepository,
         ClarifaiService clarifaiService,
         UsdaService usdaService,
         string botToken)
     {
         _botClient = botClient;
-        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, botToken, clarifaiService, usdaService);
+        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, dailyNormRepository, botToken, clarifaiService, usdaService);
     }
 
     public async Task HandleUpdateAsync(
