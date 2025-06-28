@@ -4,5 +4,5 @@ public class Nutrient
 {
     public string NutrientName { get; set; } = string.Empty;
     public string UnitName { get; set; } = string.Empty;
-    public double Value { get; set; }
+    public float Value { get; set; }
 }

@@ -10,13 +10,16 @@
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+      <PackageReference Include="Quartz" Version="3.14.0" />
       <PackageReference Include="supabase" Version="1.1.1" />
       <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
       <PackageReference Include="Telegram.Bot" Version="18.1.0" />
     </ItemGroup>
-
+    
     <ItemGroup>
-      <Folder Include="domain\entities\shop\" />
+      <None Update="Tokens.json">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
     </ItemGroup>
 
 </Project>

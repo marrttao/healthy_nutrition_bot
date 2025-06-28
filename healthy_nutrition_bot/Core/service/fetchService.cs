@@ -14,7 +14,7 @@ public class FetchService
     {
         _supabase = supabase;
     }
-
+    
     public async Task<List<T>> GetDataAsync<T>(string tableName) where T : BaseModel, new()
     {
         // Fetch data from the specified table

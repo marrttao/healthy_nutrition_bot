@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace HealthyNutritionBot.service.TokenReader;
 
-public class TokenReader
+public class  TokenReader
 {
     private class BotSettings
     {
@@ -12,6 +12,8 @@ public class TokenReader
         public string ClarifaiToken { get; set; } = string.Empty;
         
         public string UsdaApiKey { get; set; } = string.Empty;
+        
+        public string providerToken { get; set; } = string.Empty;
     }
 
     private class TokensFile
@@ -21,7 +23,7 @@ public class TokenReader
 
     private readonly BotSettings _settings;
 
-    public TokenReader(string filePath = "/home/marrttao/RiderProjects/healthy_nutrition_bott/healthy_nutrition_bot/Tokens.json")
+    public TokenReader(string filePath = "/home/marrttao/RiderProjects/healthy_nutrition_bottttt/healthy_nutrition_bot/Tokens.json")
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"File not found: {filePath}");
@@ -38,5 +40,6 @@ public class TokenReader
     public string GetClarifaiToken() => _settings.ClarifaiToken;
     
     public string GetUsdaApiKey() => _settings.UsdaApiKey;
+    public string GetProviderToken() => _settings.providerToken;
 }
 

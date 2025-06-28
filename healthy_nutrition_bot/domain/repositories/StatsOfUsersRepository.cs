@@ -18,6 +18,7 @@ public class StatsOfUsersRepository : IStatsOfUsersRepository
         _supabase = supabase;
         _fetchService = new FetchService(supabase);
         _insertService = new InsertService(supabase);
+        _updateService = new UpdateService(supabase);
     }
 
     public async Task<StatsOfUsers> GetStatsByTelegramIdAsync(long telegramId)
@@ -33,8 +34,9 @@ public class StatsOfUsersRepository : IStatsOfUsersRepository
 
     public async Task UpdateStatsAsync(StatsOfUsers stats)
     {
+        if (stats == null)
+            throw new ArgumentNullException(nameof(stats), "Stats object cannot be null.");
         await _updateService.UpdateAsync(stats);
     }
-
-
 }
+

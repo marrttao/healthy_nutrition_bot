@@ -9,32 +9,37 @@ public class NutritionCalculator
 {
     private readonly IDailyNormRepository _dailyNormRepository;
 
-    public string Gender { get; set; } // "male" or "female"
-    public double WeightKg { get; set; }
-    public double HeightCm { get; set; }
-    public string ActivityLevel { get; set; } // "low", "medium", "high"
-    public string Goal { get; set; } // "lose", "maintain", "gain"
+    public string Gender { get; private set; }
+    public double WeightKg { get; private set; }
+    public double HeightCm { get; private set; }
+    public string ActivityLevel { get; private set; }
+    public string Goal { get; private set; }
 
-    public NutritionCalculator(double heightCm, double weightKg, string gender, string goal, string activityLevel, IDailyNormRepository dailyNormRepository)
+    public NutritionCalculator(
+        double heightCm,
+        double weightKg,
+        string gender,
+        string goal,
+        string activityLevel,
+        IDailyNormRepository dailyNormRepository)
     {
-        Gender = gender.ToLower();
+        Gender = gender.Trim().ToLower();
         WeightKg = weightKg;
         HeightCm = heightCm;
-        ActivityLevel = activityLevel.ToLower();
-        Goal = goal.ToLower();
+        ActivityLevel = activityLevel.Trim().ToLower();
+        Goal = goal.Trim().ToLower();
         _dailyNormRepository = dailyNormRepository;
     }
 
-    public double CalculateBMR()
+    private double CalculateBmr()
     {
-        // Assuming default age = 16 for approximation
-        int assumedAge = 16;
+        const int defaultAge = 16;
         return Gender == "male"
-            ? 10 * WeightKg + 6.25 * HeightCm - 5 * assumedAge + 5
-            : 10 * WeightKg + 6.25 * HeightCm - 5 * assumedAge - 161;
+            ? 10 * WeightKg + 6.25 * HeightCm - 5 * defaultAge + 5
+            : 10 * WeightKg + 6.25 * HeightCm - 5 * defaultAge - 161;
     }
 
-    public double GetActivityFactor()
+    private double GetActivityMultiplier()
     {
         return ActivityLevel switch
         {
@@ -45,65 +50,67 @@ public class NutritionCalculator
         };
     }
 
-    public double AdjustCalories(double baseCalories)
+    private double AdjustCaloriesForGoal(double calories)
     {
         return Goal switch
         {
-            "lose" => baseCalories - 300,
-            "gain" => baseCalories + 300,
-            _ => baseCalories // maintain
+            "lose" => calories - 300,
+            "gain" => calories + 300,
+            _ => calories
         };
     }
 
-    public (double Calories, double Protein, double Fat, double Carbs) CalculateNutrition()
+    public (double Calories, double Protein, double Fat, double Carbs) CalculateNutritionGoals()
     {
-        double bmr = CalculateBMR();
-        double activityFactor = GetActivityFactor();
-        double tdee = bmr * activityFactor;
-        double adjustedCalories = AdjustCalories(tdee);
+        double bmr = CalculateBmr();
+        double tdee = bmr * GetActivityMultiplier();
+        double targetCalories = AdjustCaloriesForGoal(tdee);
 
-        double protein = WeightKg * 2; // grams
-        double fat = WeightKg * 1;     // grams
-
+        double protein = WeightKg * 2;
+        double fat = WeightKg * 1;
         double proteinCalories = protein * 4;
         double fatCalories = fat * 9;
-        double carbsCalories = adjustedCalories - proteinCalories - fatCalories;
+        double carbsCalories = targetCalories - proteinCalories - fatCalories;
         double carbs = carbsCalories / 4;
 
-        return (Math.Round(adjustedCalories), Math.Round(protein), Math.Round(fat), Math.Round(carbs));
+        return (
+            Math.Round(targetCalories),
+            Math.Round(protein),
+            Math.Round(fat),
+            Math.Round(carbs)
+        );
     }
 
-    public async Task<string> GetNutritionReport(long telegramId)
+    public async Task<string> GetNutritionReportAsync(long telegramId)
     {
-        // if not exists save to db
+        var goals = CalculateNutritionGoals();
         var dailyNorm = await _dailyNormRepository.GetDailyNorm(telegramId);
-        var nutritionValues = CalculateNutrition();
 
         if (dailyNorm == null)
         {
             dailyNorm = new DailyNorm
             {
                 TelegramId = telegramId,
-                Calories = (float)nutritionValues.Calories,
-                Proteins = (float)nutritionValues.Protein,
-                Fats = (float)nutritionValues.Fat,
-                Carbs = (float)nutritionValues.Carbs
+                Calories = goals.Calories,
+                Proteins = goals.Protein,
+                Fats = goals.Fat,
+                Carbs = goals.Carbs
             };
             await _dailyNormRepository.AddDailyNorm(dailyNorm);
         }
         else
         {
-            dailyNorm.Calories = (float)nutritionValues.Calories;
-            dailyNorm.Proteins = (float)nutritionValues.Protein;
-            dailyNorm.Fats = (float)nutritionValues.Fat;
-            dailyNorm.Carbs = (float)nutritionValues.Carbs;
+            dailyNorm.Calories = goals.Calories;
+            dailyNorm.Proteins = goals.Protein;
+            dailyNorm.Fats = goals.Fat;
+            dailyNorm.Carbs = goals.Carbs;
             await _dailyNormRepository.UpdateDailyNorm(dailyNorm);
         }
 
         return $"Your daily nutrition goals:\n" +
-               $"🔥 Calories: {nutritionValues.Calories} kcal\n" +
-               $"🥩 Protein: {nutritionValues.Protein} g\n" +
-               $"🧈 Fat: {nutritionValues.Fat} g\n" +
-               $"🍞 Carbs: {nutritionValues.Carbs} g";
+               $"🔥 Calories: {goals.Calories} kcal\n" +
+               $"🥩 Protein: {goals.Protein} g\n" +
+               $"🧈 Fat: {goals.Fat} g\n" +
+               $"🍞 Carbs: {goals.Carbs} g";
     }
 }

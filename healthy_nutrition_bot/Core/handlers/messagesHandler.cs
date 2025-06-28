@@ -13,21 +13,26 @@ namespace HealthyNutritionBot.service.handlers;
 
 public class MessagesHandler
 {
-    private readonly ITelegramBotClient _botClient;
+    private ITelegramBotClient _botClient;
     private readonly HandlerCommands _commandHandler;
 
+    public void SetBotClient(ITelegramBotClient botClient)
+    {
+        _botClient = botClient;
+    }
     public MessagesHandler(
         ITelegramBotClient botClient,
         InsertService insertService,
         IUserRepository userRepository,
         IStatsOfUsersRepository statsOfUsersRepository,
         IDailyNormRepository dailyNormRepository,
+        IProductsRepository productsRepository, // <-- added parameter
         ClarifaiService clarifaiService,
         UsdaService usdaService,
         string botToken)
     {
         _botClient = botClient;
-        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, dailyNormRepository, botToken, clarifaiService, usdaService);
+        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, dailyNormRepository, productsRepository, botToken, clarifaiService, usdaService);
     }
 
     public async Task HandleUpdateAsync(
@@ -63,6 +68,12 @@ public class MessagesHandler
             await _commandHandler.HandleSettingsCommand(chatId, cancellationToken);
         else if (messageText == "Change own stats")
             await _commandHandler.HandleChangeOwnStatsCommand(chatId, cancellationToken);
+        else if (messageText == "Shop")
+            await _commandHandler.HandleShopCommand(chatId, cancellationToken);
+        else if (messageText == "Stats") 
+            await _commandHandler.HandleStatsCommand(chatId, cancellationToken);
+        else if (messageText == "Daily Goal")
+            await _commandHandler.HandleDailyGoalCommand(chatId, cancellationToken);
         else if (messageText == "Back")
             await _commandHandler.HandleBackCommand(chatId, cancellationToken);
         else

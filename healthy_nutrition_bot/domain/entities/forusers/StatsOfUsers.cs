@@ -7,17 +7,18 @@ namespace HealthyNutritionBot.domain.entities;
 public class StatsOfUsers : BaseModel
 {
     [PrimaryKey("id", false)]
-    public int id { get; set; }
+    public int? id { get; set; }
+
 
     [Reference(typeof(User))]
     [Column("telegram_id")]
     public long TelegramId { get; set; }
 
     [Column("weight")]
-    public float Weight { get; set; }
+    public int Weight { get; set; }
 
     [Column("height")]
-    public float Height { get; set; }
+    public int Height { get; set; }
     
     [Column("points")]
     public int Points { get; set; }

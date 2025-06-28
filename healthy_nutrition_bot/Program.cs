@@ -14,6 +14,8 @@ using HealthyNutritionBot.domain.entities;
 using HealthyNutritionBot.domain.repositories;
 using HealthyNutritionBot.service;
 using HealthyNutritionBot.service.handlers;
+using Quartz;
+using Quartz.Impl;
 using healthy_nutrition_bot.Core.service;
 
 namespace HealthyNutritionBot;
@@ -33,46 +35,26 @@ class Program
 
         var clarifaiService = new ClarifaiService(tokenReader);
         var httpClient = new HttpClient();
-        
-        // Create a configuration object with the API key
+
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string>
-            {
-                {"UsdaApiKey", usdaApiKey}
-            })
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("tokens.json", optional: false, reloadOnChange: true)
             .Build();
-            
-        var usdaService = new UsdaService(httpClient, configuration);
+        var usdaService = new UsdaService(usdaApiKey);
 
-        UserRepository userRepository = new UserRepository(supabaseService._supabase);
-        StatsOfUsersRepository statsOfUsersRepository = new StatsOfUsersRepository(supabaseService._supabase);
-        DailyNormRepository dailyNormRepository = new DailyNormRepository(supabaseService._supabase);
-
-        var user = new User
-        {
-            TelegramId = 12345,
-            Name = "John",
-            Lastname = "Doe",
-            IsActive = true
-        };
-        await insertService.InsertAsync(user);
-
-        var retrievedUsers = await fetchService.GetDataByConditionAsync<User>(
-            "users",
-            u => u.TelegramId == user.TelegramId
-        );
-        var retrievedUser = retrievedUsers.FirstOrDefault();
-        Console.WriteLine(retrievedUser != null
-            ? $"Retrieved User: ID={retrievedUser.id}, TelegramID={retrievedUser.TelegramId}, Name={retrievedUser.Name}, Lastname={retrievedUser.Lastname}, IsActive={retrievedUser.IsActive}"
-            : "User not found");
-
-        var botClient = new TelegramBotClient(telegramToken);
-
-        using var cts = new CancellationTokenSource();
         var receiverOptions = new ReceiverOptions
         {
             AllowedUpdates = new[] { UpdateType.Message }
         };
+
+        UserRepository userRepository = new UserRepository(supabaseService._supabase);
+        StatsOfUsersRepository statsOfUsersRepository = new StatsOfUsersRepository(supabaseService._supabase);
+        DailyNormRepository dailyNormRepository = new DailyNormRepository(supabaseService._supabase);
+        ProductsRepository productsRepository = new ProductsRepository(supabaseService._supabase); // <-- added
+
+        var botClient = new TelegramBotClient(telegramToken);
+
+        using var cts = new CancellationTokenSource();
 
         MessagesHandler messagesHandler = new MessagesHandler(
             botClient,
@@ -80,6 +62,7 @@ class Program
             userRepository,
             statsOfUsersRepository,
             dailyNormRepository,
+            productsRepository, // <-- added
             clarifaiService,
             usdaService,
             telegramToken
@@ -94,7 +77,25 @@ class Program
 
         var me = await botClient.GetMeAsync();
         Console.WriteLine($"Бот {me.Username} запущен.");
+        StdSchedulerFactory factory = new StdSchedulerFactory();
+        IScheduler scheduler = await factory.GetScheduler();
+        await scheduler.Start();
 
+        // Планирование сброса таблицы в 00:00 по EEST
+        IJobDetail resetJob = JobBuilder.Create<ResetDailyGoals>()
+            .WithIdentity("resetJob", "group1")
+            .Build();
+
+        ITrigger resetTrigger = TriggerBuilder.Create()
+            .WithIdentity("resetTrigger", "group1")
+            .WithCronSchedule("0 0 0 * * ?", x => x
+                .InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Europe/Kiev")))
+            .Build();
+        await scheduler.ScheduleJob(resetJob, resetTrigger);
+
+        Console.WriteLine("Планировщик запущен. Таблица будет очищаться в 00:00 EEST...");
+
+        // Держим приложение запущенным
         await Task.Delay(Timeout.Infinite, cts.Token);
     }
 }

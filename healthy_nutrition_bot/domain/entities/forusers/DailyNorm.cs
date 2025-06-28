@@ -16,7 +16,7 @@ public class DailyNorm : BaseModel
     [Column("calories")]
     public double Calories { get; set; }
 
-    [Column("proteins")]
+    [Column("protein")]
     public double Proteins { get; set; }
 
     [Column("fats")]
@@ -28,10 +28,10 @@ public class DailyNorm : BaseModel
     [Column("calories_today")]
     public double CaloriesToday { get; set; }
     
-    [Column("proteins_today")]
+    [Column("protein_today")]
     public double ProteinsToday { get; set; }
     
-    [Column("fats_today")]
+    [Column("fat_today")]
     public double FatsToday { get; set; }
     
     [Column("carbs_today")]

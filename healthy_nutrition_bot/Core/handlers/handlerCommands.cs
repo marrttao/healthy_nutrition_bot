@@ -12,6 +12,7 @@ using HealthyNutritionBot.service;
 using HealthyNutritionBot.service.TokenReader;
 using healthy_nutrition_bot.Core.service;
 using healthy_nutrition_bot.domain.entities;
+using HealthyNutritionBot.domain.utils;
 
 namespace HealthyNutritionBot.service.handlers
 {
@@ -21,6 +22,7 @@ namespace HealthyNutritionBot.service.handlers
         private readonly IUserRepository _userRepository;
         private readonly IStatsOfUsersRepository _statsOfUsersRepository;
         private readonly IDailyNormRepository _dailyNormRepository;
+        private readonly IProductsRepository _ProductsRepository;
         private readonly string _botToken;
         private readonly ClarifaiService _clarifaiService;
         private readonly UsdaService _usdaService;
@@ -31,6 +33,7 @@ namespace HealthyNutritionBot.service.handlers
             IUserRepository userRepository,
             IStatsOfUsersRepository statsOfUsersRepository,
             IDailyNormRepository dailyNormRepository,
+            IProductsRepository productsRepository, // <-- add this
             string botToken,
             ClarifaiService clarifaiService,
             UsdaService usdaService)
@@ -38,6 +41,8 @@ namespace HealthyNutritionBot.service.handlers
             _botClient = botClient;
             _userRepository = userRepository;
             _statsOfUsersRepository = statsOfUsersRepository;
+            _dailyNormRepository = dailyNormRepository;
+            _ProductsRepository = productsRepository; // <-- fix assignment
             _botToken = botToken;
             _clarifaiService = clarifaiService;
             _usdaService = usdaService;
@@ -126,7 +131,7 @@ namespace HealthyNutritionBot.service.handlers
     {
         if (int.TryParse(messageText, out int height))
         {
-            _userStats[chatId] = (height, _userStats[chatId].Weight, _userStats[chatId].Gender, 
+            _userStats[chatId] = (height, _userStats[chatId].Weight, _userStats[chatId].Gender,
                                 _userStats[chatId].Goal, _userStats[chatId].Activity);
             _userSteps[chatId] = FillStatsStep.WaitingWeight;
 
@@ -149,7 +154,7 @@ namespace HealthyNutritionBot.service.handlers
     {
         if (int.TryParse(messageText, out int weight))
         {
-            _userStats[chatId] = (_userStats[chatId].Height, weight, _userStats[chatId].Gender, 
+            _userStats[chatId] = (_userStats[chatId].Height, weight, _userStats[chatId].Gender,
                                 _userStats[chatId].Goal, _userStats[chatId].Activity);
             _userSteps[chatId] = FillStatsStep.WaitingGender;
 
@@ -171,7 +176,7 @@ namespace HealthyNutritionBot.service.handlers
 
     if (step == FillStatsStep.WaitingGender)
     {
-        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight, 
+        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight,
                             messageText, _userStats[chatId].Goal, _userStats[chatId].Activity);
         _userSteps[chatId] = FillStatsStep.WaitingGoal;
 
@@ -185,7 +190,7 @@ namespace HealthyNutritionBot.service.handlers
 
     if (step == FillStatsStep.WaitingGoal)
     {
-        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight, 
+        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight,
                             _userStats[chatId].Gender, messageText, _userStats[chatId].Activity);
         _userSteps[chatId] = FillStatsStep.WaitingActivity;
 
@@ -199,16 +204,19 @@ namespace HealthyNutritionBot.service.handlers
 
     if (step == FillStatsStep.WaitingActivity)
     {
-        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight, 
+        _userStats[chatId] = (_userStats[chatId].Height, _userStats[chatId].Weight,
                             _userStats[chatId].Gender, _userStats[chatId].Goal, messageText);
         _userSteps[chatId] = FillStatsStep.Done;
 
         // Save to database
+        var height = _userStats[chatId].Height ?? 0;
+        var weight = _userStats[chatId].Weight ?? 0;
+
         var stats = new StatsOfUsers
         {
             TelegramId = chatId,
-            Height = _userStats[chatId].Height ?? 0,
-            Weight = _userStats[chatId].Weight ?? 0,
+            Height = height,
+            Weight = weight,
             Gender = _userStats[chatId].Gender,
             Goal = _userStats[chatId].Goal,
             Activity = _userStats[chatId].Activity,
@@ -230,6 +238,16 @@ namespace HealthyNutritionBot.service.handlers
             await _statsOfUsersRepository.UpdateStatsAsync(existingStats);
         }
 
+        var calculator = new NutritionCalculator(
+            _userStats[chatId].Height ?? 0,
+            _userStats[chatId].Weight ?? 0,
+            _userStats[chatId].Gender,
+            _userStats[chatId].Goal,
+            _userStats[chatId].Activity,
+            _dailyNormRepository 
+        );
+        await calculator.GetNutritionReportAsync(chatId);
+
         await _botClient.SendTextMessageAsync(
             chatId,
             $"Thanks! Your stats are saved:\nHeight: {_userStats[chatId].Height} cm\nWeight: {_userStats[chatId].Weight} kg\nGender: {_userStats[chatId].Gender}\nGoal: {_userStats[chatId].Goal}\nActivity Level: {_userStats[chatId].Activity}",
@@ -238,8 +256,8 @@ namespace HealthyNutritionBot.service.handlers
 
         _userSteps[chatId] = FillStatsStep.None;
         _userStats.Remove(chatId);
-             }
-        }
+    }
+}
         
 
         public async Task HandleSettingsCommand(long chatId, CancellationToken cancellationToken)
@@ -262,6 +280,21 @@ namespace HealthyNutritionBot.service.handlers
 
         public async Task HandleEatCommand(long chatId, CancellationToken cancellationToken)
         {
+            // back button
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Starting eat",
+                replyMarkup: Buttons.Back(),
+                cancellationToken: cancellationToken);
+            var norm = await _dailyNormRepository.GetDailyNorm(chatId);
+            if (norm.CaloriesToday >= norm.Calories)
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "You shouldnt eat more.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
             _waitingForFoodPhoto[chatId] = true;
 
             await _botClient.SendTextMessageAsync(
@@ -289,47 +322,58 @@ namespace HealthyNutritionBot.service.handlers
         var foodList = await _usdaService.GetFoodInfoAsync(result);
         var food = foodList.FirstOrDefault();
         
-        // add stats of usdafood to daily norm
-        
-        
         // Send food details to the user
+        if (food == null)
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Sorry, I could not recognize the food or retrieve its nutritional information.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
         await _botClient.SendTextMessageAsync(
             chatId,
             $"Calories: {food.Calories}, Protein: {food.Protein}, Fat: {food.Fat}, Carbs: {food.Carbohydrates}",
             cancellationToken: cancellationToken);
 
+        var existingNorm = await _dailyNormRepository.GetDailyNorm(chatId);
 
-
-        _dailyNormRepository.GetDailyNorm(chatId);
-        var newDailyNorm = new DailyNorm
+        if (existingNorm == null)
         {
-            TelegramId = chatId,
-            CaloriesToday = food.Calories,
-            ProteinsToday = food.Protein,
-            FatsToday = food.Fat,
-            CarbsToday = food.Carbohydrates
-        };
-        
-        // Save the daily norm to the database
-        await _dailyNormRepository.UpdateDailyNorm(newDailyNorm);
-        
-        // if healthy and food exists
+            var newNorm = new DailyNorm
+            {
+                TelegramId = chatId,
+                CaloriesToday = food.Calories,
+                ProteinsToday = food.Protein,
+                FatsToday = food.Fat,
+                CarbsToday = food.Carbohydrates
+            };
+            await _dailyNormRepository.AddDailyNorm(newNorm);
+        }
+        else
+        {
+            existingNorm.CaloriesToday += food.Calories;
+            existingNorm.ProteinsToday += food.Protein;
+            existingNorm.FatsToday += food.Fat;
+            existingNorm.CarbsToday += food.Carbohydrates;
+            await _dailyNormRepository.UpdateDailyNorm(existingNorm);
+        }
+
         if (food != null && food.IsHealthy)
         {
             await _botClient.SendTextMessageAsync(
                 chatId,
                 $"✅ This food is healthy! You got 50 points! Calories: {food.Calories}, Protein: {food.Protein}, Fat: {food.Fat}, Carbs: {food.Carbohydrates}",
                 cancellationToken: cancellationToken);
-            // Update user points
-            
+
             var stats = await _statsOfUsersRepository.GetStatsByTelegramIdAsync(chatId);
-            
+
             if (stats != null)
             {
-                stats.Points += 50; // Add points for healthy food
+                stats.Points += 50;
                 stats.ShopPoints += 50;
                 await _statsOfUsersRepository.UpdateStatsAsync(stats);
-                
             }
             else
             {
@@ -373,14 +417,49 @@ namespace HealthyNutritionBot.service.handlers
 
             await _botClient.SendTextMessageAsync(
                 chatId,
-                $"Your daily goal is set based on your stats:\n" +
-                $"Calories: {dailyNorm.Calories} kcal\n" +
-                $"Protein: {dailyNorm.Proteins} g\n" +
-                $"Fat: {dailyNorm.Fats} g\n" +
-                $"Carbohydrates: {dailyNorm.Carbs} g",
+                $"Your daily goal:\n" +
+                $"Calories: {dailyNorm.CaloriesToday} kcal / {dailyNorm.Calories} kcal \n" +
+                $"Protein: {dailyNorm.ProteinsToday} g / {dailyNorm.Proteins} \n" +
+                $"Fat: {dailyNorm.FatsToday} g / {dailyNorm.Fats} g \n" +
+                $"Carbohydrates: {dailyNorm.CarbsToday} g / {dailyNorm.Carbs} g",
                 cancellationToken: cancellationToken);
         }
 
+        public async Task HandleShopCommand(long chatId, CancellationToken cancellationToken)
+        {
+            var shopService = new ShopService(_ProductsRepository);
+            await shopService.ShowShopAsync(_botClient, chatId);
+
+        }
+
+        public async Task HandleStatsCommand(long chatId, CancellationToken cancellationToken)
+        {
+            var stats = await _statsOfUsersRepository.GetStatsByTelegramIdAsync(chatId);
+            if (stats == null)
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "Please fill your stats first using ",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                $"Your stats:\n" +
+                $"Height: {stats.Height} cm\n" +
+                $"Weight: {stats.Weight} kg\n" +
+                $"Gender: {stats.Gender} \n" +
+                $"Goal: {stats.Goal} \n" +
+                $"Activity Level: {stats.Activity} \n" +
+                $"Points: {stats.Points} \n" +
+                $"Shop Points: {stats.ShopPoints} \n",
+                cancellationToken: cancellationToken);
+        }
+        
+        
+
+        
         public async Task HandleUserMessage(long chatId, string messageText, CancellationToken cancellationToken)
         {
             if (!_userSteps.ContainsKey(chatId) || _userSteps[chatId] == FillStatsStep.None)
@@ -404,3 +483,4 @@ namespace HealthyNutritionBot.service.handlers
         }
     }
 }
+

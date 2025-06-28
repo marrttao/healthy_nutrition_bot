@@ -9,7 +9,7 @@ public static class Buttons
         return new ReplyKeyboardMarkup(new[]
         {
             new KeyboardButton[] { "Eat", "Daily Goal"  },
-            new KeyboardButton[] { "Stats", "Ranking" },
+            new KeyboardButton[] { "Stats", "Ranking", "Shop" },
             new KeyboardButton[] { "Settings", "Help" }
         })
         {
@@ -18,11 +18,22 @@ public static class Buttons
         };
     }
 
+    public static ReplyKeyboardMarkup Back()
+    {
+        return new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { "Back" }
+        })
+        {
+            ResizeKeyboard = true,
+            OneTimeKeyboard = false
+        };
+    }
     public static ReplyKeyboardMarkup Settings()
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "Change own stats", "Change Language" },
+            new KeyboardButton[] { "Change own stats"},
             new KeyboardButton[] { "Back" }
         })
         {
@@ -35,8 +46,7 @@ public static class Buttons
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new[] { new KeyboardButton("Male"), new KeyboardButton("Female") },
-            new[] { new KeyboardButton("Other") }
+            new[] { new KeyboardButton("Male"), new KeyboardButton("Female") }
         })
         {
             ResizeKeyboard = true
@@ -47,8 +57,8 @@ public static class Buttons
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new[] { new KeyboardButton("Lose Weight"), new KeyboardButton("Maintain Weight") },
-            new[] { new KeyboardButton("Gain Weight"), new KeyboardButton("Build Muscle") }
+            new[] { new KeyboardButton("Lose"), new KeyboardButton("Maintain") },
+            new[] { new KeyboardButton("Gain")}
         })
         {
             ResizeKeyboard = true
@@ -59,9 +69,8 @@ public static class Buttons
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new[] { new KeyboardButton("Sedentary"), new KeyboardButton("Light Activity") },
-            new[] { new KeyboardButton("Moderate Activity"), new KeyboardButton("Very Active") },
-            new[] { new KeyboardButton("Extra Active") }
+            new[] { new KeyboardButton("Low"), new KeyboardButton("Medium") },
+            new[] { new KeyboardButton("High")}
         })
         {
             ResizeKeyboard = true
