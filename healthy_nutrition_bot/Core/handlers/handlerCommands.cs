@@ -392,6 +392,22 @@ namespace HealthyNutritionBot.service.handlers
         }
     }
 }
+        
+        public async Task HandleHelpCommand(long chatId, CancellationToken cancellationToken)
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "Here are the commands you can use:\n" +
+                "/start - Start the bot and fill your stats\n" +
+                "/change_stats - Change your stats\n" +
+                "/daily_goal - Show your daily goals\n" +
+                "/eat - Log your food intake\n" +
+                "/shop - View the shop\n" +
+                "/stats - View your stats\n" +
+                "/settings - Change settings\n" +
+                "/back - Go back to the main menu",
+                cancellationToken: cancellationToken);
+        }
         public async Task HandleDailyGoalCommand(long chatId, CancellationToken cancellationToken)
         {
             var stats = await _statsOfUsersRepository.GetStatsByTelegramIdAsync(chatId);
@@ -483,4 +499,3 @@ namespace HealthyNutritionBot.service.handlers
         }
     }
 }
-
