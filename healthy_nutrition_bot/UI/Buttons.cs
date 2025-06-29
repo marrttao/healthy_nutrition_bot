@@ -9,7 +9,7 @@ public static class Buttons
         return new ReplyKeyboardMarkup(new[]
         {
             new KeyboardButton[] { "Eat", "Daily Goal"  },
-            new KeyboardButton[] { "Stats", "Ranking", "Shop" },
+            new KeyboardButton[] { "Stats", "Shop" },
             new KeyboardButton[] { "Settings", "Help" }
         })
         {
