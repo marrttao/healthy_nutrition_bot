@@ -74,6 +74,8 @@ public class MessagesHandler
             await _commandHandler.HandleStatsCommand(chatId, cancellationToken);
         else if (messageText == "Daily Goal")
             await _commandHandler.HandleDailyGoalCommand(chatId, cancellationToken);
+        else if (messageText == "Help")
+            await _commandHandler.HandleHelpCommand(chatId, cancellationToken);
         else if (messageText == "Back")
             await _commandHandler.HandleBackCommand(chatId, cancellationToken);
         else

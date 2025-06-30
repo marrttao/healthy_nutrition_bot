@@ -506,7 +506,7 @@ namespace HealthyNutritionBot.service.handlers
             {
                 await _botClient.SendTextMessageAsync(
                     chatId,
-                    "Please start with /start command.",
+                    "I havent understood",
                     cancellationToken: cancellationToken);
                 return;
             }
