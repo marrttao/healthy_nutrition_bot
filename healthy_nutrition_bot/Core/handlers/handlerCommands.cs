@@ -90,7 +90,6 @@ namespace HealthyNutritionBot.service.handlers
             await _botClient.SendTextMessageAsync(
                 chatId,
                 "Hi there! I'm your personal nutrition bot. Let's start by filling up your stats.",
-                replyMarkup: Buttons.GetMainMenu(),
                 cancellationToken: cancellationToken);
 
             _userSteps[chatId] = FillStatsStep.WaitingHeight;
@@ -280,27 +279,52 @@ namespace HealthyNutritionBot.service.handlers
 
         public async Task HandleEatCommand(long chatId, CancellationToken cancellationToken)
         {
-            // back button
-            await _botClient.SendTextMessageAsync(
-                chatId,
-                "Starting eat",
-                replyMarkup: Buttons.Back(),
-                cancellationToken: cancellationToken);
-            var norm = await _dailyNormRepository.GetDailyNorm(chatId);
-            if (norm.CaloriesToday >= norm.Calories)
+            try
             {
+                // back button
                 await _botClient.SendTextMessageAsync(
                     chatId,
-                    "You shouldnt eat more.",
+                    "Starting eat 🍽️",
+                    replyMarkup: Buttons.Back(),
                     cancellationToken: cancellationToken);
-                return;
-            }
-            _waitingForFoodPhoto[chatId] = true;
 
-            await _botClient.SendTextMessageAsync(
-                chatId,
-                "Send photo of your food.",
-                cancellationToken: cancellationToken);
+                var norm = await _dailyNormRepository.GetDailyNorm(chatId);
+
+                if (norm == null)
+                {
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        "❌ Failed to get your daily norm. Try again later.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                if (norm.CaloriesToday >= norm.Calories)
+                {
+                    await _botClient.SendTextMessageAsync(
+                        chatId,
+                        "⚠️ You shouldn't eat more today. You've reached your calorie limit.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                _waitingForFoodPhoto[chatId] = true;
+
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "📸 Please send a photo of your food.",
+                    cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Логирование ошибки (если есть логгер)
+                Console.WriteLine($"[HandleEatCommand] Error: {ex.Message}");
+
+                await _botClient.SendTextMessageAsync(
+                    chatId,
+                    "❌ An error occurred while processing your request. Please try again later.",
+                    cancellationToken: cancellationToken);
+            }
         }
 
         public async Task HandlePhotoAsync(Message message, CancellationToken cancellationToken)
