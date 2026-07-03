@@ -1,8 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using Quartz;
-using HealthyNutritionBot.domain.entities;
-using HealthyNutritionBot.service;
+using Microsoft.EntityFrameworkCore; // Обязательно для ExecuteUpdateAsync
+using HealthyNutritionBot.Data; // Пространство имен вашего AppDbContext
+
+namespace HealthyNutritionBot;
 
 [DisallowConcurrentExecution]
 public class ResetDailyGoals : IJob
@@ -11,27 +13,20 @@ public class ResetDailyGoals : IJob
     {
         try
         {
-            // Создаем новый клиент Supabase для потокобезопасности
-            var supabaseService = new SupabaseService();
-            await supabaseService.InitializeAsync();
-            var _supabase = supabaseService._supabase;
-            var updateService = new UpdateService(_supabase);
-            var fetchService = new FetchService(_supabase);
+            // using гарантирует правильное и безопасное закрытие соединения с БД, 
+            // когда задача Quartz завершится
+            using var dbContext = new AppDbContext();
 
-            // update daily_norm для всех пользователей
-            var dailyNorms = await fetchService.GetDataAsync<DailyNorm>("daily_norm");
-            foreach (var dailyNorm in dailyNorms)
-            {
-                // Сброс значений daily_norm
-                dailyNorm.CaloriesToday = 0;
-                dailyNorm.ProteinsToday = 0;
-                dailyNorm.FatsToday = 0;
-                dailyNorm.CarbsToday = 0;
+            // Массовое обновление: EF Core сгенерирует один запрос вида 
+            // UPDATE daily_norm SET calories_today = 0, protein_today = 0 ...
+            int updatedRows = await dbContext.DailyNorms
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(dn => dn.CaloriesToday, 0)
+                    .SetProperty(dn => dn.ProteinsToday, 0)
+                    .SetProperty(dn => dn.FatsToday, 0)
+                    .SetProperty(dn => dn.CarbsToday, 0));
 
-                // Обновляем запись в базе данных
-                await updateService.UpdateAsync(dailyNorm);
-            }
-            Console.WriteLine("Таблица daily_norm очищена в 00:00 EEST");
+            Console.WriteLine($"Таблица daily_norm успешно сброшена. Обновлено записей: {updatedRows} в 00:00 EEST");
         }
         catch (Exception ex)
         {

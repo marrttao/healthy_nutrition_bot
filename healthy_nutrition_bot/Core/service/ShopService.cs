@@ -36,7 +36,7 @@ public class ShopService
                 chatId: chatId,
                 title: product.Name,
                 description: $"Цена: {product.Price} {product.Currency}",
-                payload: $"product-{product.id}",
+                payload: $"product-{product.Id}",
                 providerToken: "1877036958:TEST:374256dd2014a6dd628c2a487d7bae8cde5dc0bb", // Use a real token
                 currency: product.Currency,
                 prices: prices,

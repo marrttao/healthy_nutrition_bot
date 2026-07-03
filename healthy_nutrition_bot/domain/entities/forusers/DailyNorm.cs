@@ -1,15 +1,17 @@
-﻿using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthyNutritionBot.domain.entities;
 
 [Table("daily_norm")]
-public class DailyNorm : BaseModel
-{
-    [PrimaryKey("id", false)]
+public class DailyNorm 
+{ // Добавлена пропущенная открывающая скобка
+
+    [Key] // Заменили PrimaryKey на Key
+    [Column("id")]
     public int Id { get; set; }
 
-    [Reference(typeof(User))]
+    // Атрибут [Reference] удален, EF Core свяжет таблицы по ключу, если это потребуется
     [Column("telegram_id")]
     public long TelegramId { get; set; }
 

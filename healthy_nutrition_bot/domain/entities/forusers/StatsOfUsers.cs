@@ -1,16 +1,15 @@
-using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthyNutritionBot.domain.entities;
 
 [Table("stats_of_users")]
-public class StatsOfUsers : BaseModel
+public class StatsOfUsers // Убрали наследование BaseModel
 {
-    [PrimaryKey("id", false)]
-    public int? id { get; set; }
+    [Key]
+    [Column("id")]
+    public int Id { get; set; } // Исправлено имя переменной с id на Id
 
-
-    [Reference(typeof(User))]
     [Column("telegram_id")]
     public long TelegramId { get; set; }
 
@@ -27,11 +26,11 @@ public class StatsOfUsers : BaseModel
     public int ShopPoints { get; set; }
     
     [Column("gender")]
-    public string Gender { get; set; }
+    public string Gender { get; set; } = string.Empty;
     
     [Column("goal")]
-    public string Goal { get; set; }
+    public string Goal { get; set; } = string.Empty;
     
     [Column("activity")]
-    public string Activity { get; set; }
+    public string Activity { get; set; } = string.Empty;
 }

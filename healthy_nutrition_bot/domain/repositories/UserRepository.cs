@@ -1,33 +1,30 @@
-// UserRepository.cs
 using HealthyNutritionBot.domain.entities;
 using System.Threading.Tasks;
-using System.Linq;
-using HealthyNutritionBot.service;
+using Microsoft.EntityFrameworkCore;
 using HealthyNutritionBot.domain.interfaces;
+using HealthyNutritionBot.Data; // Подключаем AppDbContext
 
 namespace HealthyNutritionBot.domain.repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly Supabase.Client _supabase;
-    private readonly FetchService _fetchService;
-    private readonly InsertService _insertService;
+    private readonly AppDbContext _context;
     
-    public UserRepository(Supabase.Client supabase)
+    public UserRepository(AppDbContext context)
     {
-        _supabase = supabase;
-        _fetchService = new FetchService(supabase);
-        _insertService = new InsertService(supabase); // Add this line to initialize _insertService
+        _context = context;
     }
 
-    public async Task<User> GetUserById(long id)
+    public async Task<User?> GetUserById(long id)
     {
-        var users = await _fetchService.GetDataByConditionAsync<User>("users", x => x.TelegramId == id);
-        return users.FirstOrDefault();
+        // EF Core сам транслирует это в SQL запрос к базе
+        return await _context.Users.FirstOrDefaultAsync(x => x.TelegramId == id);
     }
 
     public async Task AddUserAsync(User user)
     {
-        await _insertService.InsertAsync(user);
+        await _context.Users.AddAsync(user);
+        // Обязательно сохраняем изменения
+        await _context.SaveChangesAsync(); 
     }
 }

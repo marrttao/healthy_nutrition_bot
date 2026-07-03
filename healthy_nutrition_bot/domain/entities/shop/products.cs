@@ -1,14 +1,14 @@
-
-using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthyNutritionBot.domain.entities;
 
 [Table("products")]
-public class Products : BaseModel
+public class Products // Убрано наследование от BaseModel
 {
-    [PrimaryKey("id", false)]
-    public short id { get; set; }
+    [Key] // Заменили атрибут Supabase на стандартный EF Core
+    [Column("id")]
+    public short Id { get; set; } // Изменили название с id на Id по стандартам C#
     
     [Column("name")]
     public string Name { get; set; } = string.Empty;

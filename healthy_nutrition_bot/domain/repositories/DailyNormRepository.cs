@@ -1,39 +1,34 @@
 ﻿using HealthyNutritionBot.domain.entities;
 using System.Threading.Tasks;
-using System.Linq;
-using HealthyNutritionBot.service;
+using Microsoft.EntityFrameworkCore;
 using HealthyNutritionBot.domain.interfaces;
+using HealthyNutritionBot.Data; // Подключаем AppDbContext
 
 namespace HealthyNutritionBot.domain.repositories;
 
 public class DailyNormRepository : IDailyNormRepository
 {
-    private readonly Supabase.Client _supabase;
-    private readonly FetchService _fetchService;
-    private readonly InsertService _insertService;
-    private readonly UpdateService _updateService;
+    private readonly AppDbContext _context;
 
-    public DailyNormRepository(Supabase.Client supabase)
+    public DailyNormRepository(AppDbContext context)
     {
-        _supabase = supabase;
-        _fetchService = new FetchService(supabase);
-        _insertService = new InsertService(supabase);
-        _updateService = new UpdateService(supabase);
+        _context = context;
     }
 
-    public async Task<DailyNorm> GetDailyNorm(long telegramId)
+    public async Task<DailyNorm?> GetDailyNorm(long telegramId)
     {
-        var dailyNorm = await _fetchService.GetDataByConditionAsync<DailyNorm>("daily_norm", x => x.TelegramId == telegramId);
-        return dailyNorm.FirstOrDefault();
+        return await _context.DailyNorms.FirstOrDefaultAsync(x => x.TelegramId == telegramId);
     }
 
     public async Task AddDailyNorm(DailyNorm dailyNorm)
     {
-        await _insertService.InsertAsync(dailyNorm);
+        await _context.DailyNorms.AddAsync(dailyNorm);
+        await _context.SaveChangesAsync();
     }
 
     public async Task UpdateDailyNorm(DailyNorm dailyNorm)
     {
-        await _updateService.UpdateAsync(dailyNorm);
+        _context.DailyNorms.Update(dailyNorm);
+        await _context.SaveChangesAsync();
     }
 }

@@ -1,45 +1,26 @@
-using System.Text.Json;
-
 namespace HealthyNutritionBot.service.TokenReader;
 
-public class  TokenReader
+public class TokenReader
 {
-    private class BotSettings
+    private string GetEnvironmentVariable(string variableName)
     {
-        public string TelegramToken { get; set; } = string.Empty;
-        public string SupabaseUrl { get; set; } = string.Empty;
-        public string SupabaseKey { get; set; } = string.Empty;
-        public string ClarifaiToken { get; set; } = string.Empty;
-        
-        public string UsdaApiKey { get; set; } = string.Empty;
-        
-        public string providerToken { get; set; } = string.Empty;
+        var value = Environment.GetEnvironmentVariable(variableName);
+        if (string.IsNullOrEmpty(value))
+            throw new InvalidOperationException($"Environment variable '{variableName}' is not set or is empty. Please check your .env file.");
+        return value;
     }
 
-    private class TokensFile
+    public TokenReader()
     {
-        public BotSettings BotSettings { get; set; } = new();
+        // Constructor no longer requires a file path
     }
 
-    private readonly BotSettings _settings;
-
-    public TokenReader(string filePath = "/home/marrttao/RiderProjects/healthy_nutrition_bottttt/healthy_nutrition_bot/Tokens.json")
-    {
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException($"File not found: {filePath}");
-
-        var json = File.ReadAllText(filePath);
-        var tokens = JsonSerializer.Deserialize<TokensFile>(json)
-                     ?? throw new Exception("Failed to parse tokens file.");
-        _settings = tokens.BotSettings;
-    }
-
-    public string GetTelegramToken() => _settings.TelegramToken;
-    public string GetSupabaseUrl() => _settings.SupabaseUrl;
-    public string GetSupabaseKey() => _settings.SupabaseKey;
-    public string GetClarifaiToken() => _settings.ClarifaiToken;
-    
-    public string GetUsdaApiKey() => _settings.UsdaApiKey;
-    public string GetProviderToken() => _settings.providerToken;
+    public string GetTelegramToken() => GetEnvironmentVariable("TELEGRAM_TOKEN");
+    public string GetSupabaseUrl() => GetEnvironmentVariable("SUPABASE_URL");
+    public string GetSupabaseKey() => GetEnvironmentVariable("SUPABASE_KEY");
+    public string GetGoogleVision() => GetEnvironmentVariable("GOOGLE_VISION_API");
+    public string GetUsdaApiKey() => GetEnvironmentVariable("USDA_API_KEY");
+    public string GetProviderToken() => GetEnvironmentVariable("PROVIDER_TOKEN");
+    public string GetConnectionString() => GetEnvironmentVariable("SUPABASE_CONNECTION_STRING");
 }
 

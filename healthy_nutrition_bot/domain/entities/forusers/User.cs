@@ -1,17 +1,19 @@
-// User.cs
-using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthyNutritionBot.domain.entities;
 
 [Table("users")]
-public class User : BaseModel
+public class User // Убрали наследование BaseModel
 {
-    
+    [Key]
+    [Column("id")]
+    public short Id { get; set; } // Исправлено имя переменной на Id для единообразия
+
     [Column("telegram_id")]
     public long TelegramId { get; set; }
-    [PrimaryKey("id", false)]
-    public short id { get; set; }
+    
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
 

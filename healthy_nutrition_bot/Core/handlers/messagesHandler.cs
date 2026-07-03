@@ -6,7 +6,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using healthy_nutrition_bot.Core.service;
-using HealthyNutritionBot.service;
 using HealthyNutritionBot.domain.interfaces;
 
 namespace HealthyNutritionBot.service.handlers;
@@ -20,19 +19,19 @@ public class MessagesHandler
     {
         _botClient = botClient;
     }
+
     public MessagesHandler(
         ITelegramBotClient botClient,
-        InsertService insertService,
         IUserRepository userRepository,
         IStatsOfUsersRepository statsOfUsersRepository,
         IDailyNormRepository dailyNormRepository,
-        IProductsRepository productsRepository, // <-- added parameter
-        ClarifaiService clarifaiService,
+        IProductsRepository productsRepository,
+        GoogleVisionService googleVisionService,
         UsdaService usdaService,
         string botToken)
     {
         _botClient = botClient;
-        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, dailyNormRepository, productsRepository, botToken, clarifaiService, usdaService);
+        _commandHandler = new HandlerCommands(botClient, userRepository, statsOfUsersRepository, dailyNormRepository, productsRepository, botToken, googleVisionService, usdaService);
     }
 
     public async Task HandleUpdateAsync(
@@ -60,9 +59,22 @@ public class MessagesHandler
 
         Console.WriteLine($"Получено сообщение от {chatId}: {messageText}");
 
+        // /start обрабатывается всегда особым образом (сам решает, что делать,
+        // если пользователь уже в процессе анкеты или уже зарегистрирован).
         if (messageText == "/start")
+        {
             await _commandHandler.HandleStartCommand(chatId, message, cancellationToken);
-        else if (messageText == "Eat")
+            return;
+        }
+
+        // ВАЖНО: если пользователь сейчас в процессе заполнения анкеты — ЛЮБОЙ текст
+        // (даже совпадающий с текстом кнопки типа "Eat" или "Shop") сначала должен
+        // считаться ответом на текущий вопрос анкеты, а не командой меню.
+        // Иначе можно было бы "проскочить" анкету, просто нажав другую кнопку.
+        if (await _commandHandler.HandlerFillStats(chatId, messageText, cancellationToken))
+            return;
+
+        if (messageText == "Eat")
             await _commandHandler.HandleEatCommand(chatId, cancellationToken);
         else if (messageText == "Settings")
             await _commandHandler.HandleSettingsCommand(chatId, cancellationToken);
@@ -70,7 +82,7 @@ public class MessagesHandler
             await _commandHandler.HandleChangeOwnStatsCommand(chatId, cancellationToken);
         else if (messageText == "Shop")
             await _commandHandler.HandleShopCommand(chatId, cancellationToken);
-        else if (messageText == "Stats") 
+        else if (messageText == "Stats")
             await _commandHandler.HandleStatsCommand(chatId, cancellationToken);
         else if (messageText == "Daily Goal")
             await _commandHandler.HandleDailyGoalCommand(chatId, cancellationToken);
